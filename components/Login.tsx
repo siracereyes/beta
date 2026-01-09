@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User, Lock, ArrowRight, Loader2, AlertCircle, Mail, Map, Building2, Terminal, Globe } from 'lucide-react';
 import { validateLogin, registerUser, saveSession, testApiConnection } from '../services/authService';
 import { UserSession } from '../types';
@@ -51,6 +51,10 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       if (mode === 'login') {
         session = await validateLogin(username, password, onStatus);
       } else {
+        // Ensure SDO is provided during signup
+        if (!sdo.trim()) {
+          throw new Error("Division/SDO name is required for registry.");
+        }
         session = await registerUser({ username, passwordPlain: password, email, sdo, schoolName }, onStatus);
       }
 
@@ -82,14 +86,14 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
               <img src={LOGO_URL} alt="FTAD Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-xl font-black text-white tracking-tighter uppercase text-center leading-none">
-              FTAD MONITORING
+              {mode === 'login' ? 'FTAD PORTAL' : 'REGISTRY ENROLLMENT'}
             </h1>
             <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.5em] mt-2">
               Vercel Edge Config v6.0
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div className="relative group">
               <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
               <input 
@@ -114,6 +118,45 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
               />
             </div>
 
+            {mode === 'signup' && (
+              <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2">
+                <div className="relative group">
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <input 
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-white text-sm font-bold focus:outline-none focus:border-indigo-600 transition-all placeholder:text-slate-600"
+                    placeholder="Email Address"
+                    required
+                  />
+                </div>
+
+                <div className="relative group">
+                  <Map className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <input 
+                    type="text"
+                    value={sdo}
+                    onChange={(e) => setSdo(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-white text-sm font-bold focus:outline-none focus:border-indigo-600 transition-all placeholder:text-slate-600 border-indigo-500/30"
+                    placeholder="Division / SDO Name (e.g. Caloocan)"
+                    required
+                  />
+                </div>
+
+                <div className="relative group">
+                  <Building2 className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <input 
+                    type="text"
+                    value={schoolName}
+                    onChange={(e) => setSchoolName(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-white text-sm font-bold focus:outline-none focus:border-indigo-600 transition-all placeholder:text-slate-600"
+                    placeholder="Specific School / Office"
+                  />
+                </div>
+              </div>
+            )}
+
             {error && (
               <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 flex items-start gap-3">
                 <AlertCircle className="text-rose-500 shrink-0 mt-0.5" size={14} />
@@ -124,9 +167,9 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
             <button 
               type="submit"
               disabled={isAuthenticating}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl py-4 font-black flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl py-4 font-black flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50 mt-4"
             >
-              {isAuthenticating ? <Loader2 className="animate-spin" size={18} /> : 'CONNECT'}
+              {isAuthenticating ? <Loader2 className="animate-spin" size={18} /> : (mode === 'login' ? 'CONNECT' : 'ENROLL')}
               <ArrowRight size={18} />
             </button>
           </form>

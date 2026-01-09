@@ -1,4 +1,3 @@
-
 // App.tsx: Integrated session management and data scope filtering
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -53,20 +52,27 @@ const App: React.FC = () => {
     const userSdo = (session.sdo || "").toUpperCase().trim();
     const username = (session.username || "").toLowerCase();
 
-    // Regional/Global Admin Access check
+    // STRICT Admin Access check
+    // Only the 'admin' account or accounts explicitly labeled 'FTAD-REGIONAL' see everything.
     const isRegionalAdmin = 
       ['admin', 'ftad_admin'].includes(username) || 
-      ['FTAD-REGIONAL', 'NCR-REGIONAL', 'REGIONAL', 'FTAD'].includes(userSdo);
+      ['FTAD-REGIONAL'].includes(userSdo);
 
     if (isRegionalAdmin) {
       return data;
     }
 
-    // Filter data where the Reporting Office contains the user's SDO name
+    // If SDO is empty, do not show any data (safety fallback)
+    if (!userSdo) {
+      return [];
+    }
+
+    // Filter data where the Reporting Office or Division contains the user's SDO name
     return data.filter(record => {
       const office = (record.office || "").toUpperCase();
       const division = (record.divisionSchool || "").toUpperCase();
       
+      // We look for the exact division string within the office/school columns
       return office.includes(userSdo) || division.includes(userSdo);
     });
   }, [data, session]);
@@ -227,7 +233,7 @@ const App: React.FC = () => {
           {filteredData.length > 0 ? (
             <DataTable records={filteredData} />
           ) : (
-            <div className="bg-white p-32 rounded-[3rem] border border-slate-100 flex flex-col items-center justify-center text-center">
+            <div className="bg-white p-32 rounded-[3rem] border border-slate-100 flex flex-col items-center justify-center text-center shadow-xl shadow-slate-200/50">
               <div className="w-24 h-24 bg-slate-50 text-slate-200 rounded-full flex items-center justify-center mb-8">
                 <Database size={48} />
               </div>
@@ -240,8 +246,8 @@ const App: React.FC = () => {
                 <>
                   <h4 className="text-2xl font-black text-slate-900 mb-2">No Records Found</h4>
                   <p className="text-slate-400 font-medium max-w-sm">
-                    No registry entries match the current scope of <span className="font-bold text-slate-900">{session.sdo}</span>. 
-                    Please ensure the Reporting Office names match your division profile.
+                    No registry entries match the current scope of <span className="font-bold text-slate-900">{session.sdo || 'Unknown'}</span>. 
+                    Please ensure the "Reporting Office" or "Division/School" columns in the spreadsheet contain <span className="text-indigo-600 font-bold">"{session.sdo}"</span>.
                   </p>
                 </>
               )}
