@@ -1,4 +1,6 @@
 
+// App.tsx: Integrated session management and Login gateway
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchFTADData } from './services/dataService';
 import { TARecord, FTADStats, UserSession } from './types';
@@ -7,18 +9,17 @@ import DataTable from './components/DataTable';
 import Login from './components/Login';
 import { getSession, clearSession } from './services/authService';
 import { 
-  RefreshCw, Database, Activity, 
-  Target, Building2, Info, CheckCircle2, Clock, AlertCircle, XCircle, Timer,
-  LogOut, UserCircle
+  RefreshCw, Database, 
+  Target, Info, CheckCircle2, AlertCircle, XCircle, Timer, LogOut, User as UserIcon
 } from 'lucide-react';
 
 const LOGO_URL = "https://depedcaloocan.com/wp-content/uploads/2025/07/webtap.png";
 
 const App: React.FC = () => {
+  const [session, setSession] = useState<UserSession | null>(getSession());
   const [data, setData] = useState<TARecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [session, setSession] = useState<UserSession | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -35,24 +36,14 @@ const App: React.FC = () => {
   };
 
   useEffect(() => { 
-    const activeSession = getSession();
-    if (activeSession) {
-      setSession(activeSession);
+    if (session) {
       loadData();
-    } else {
-      setLoading(false);
     }
-  }, []);
+  }, [session]);
 
   const handleLogout = () => {
     clearSession();
     setSession(null);
-    setData([]);
-  };
-
-  const handleLoginSuccess = (newSession: UserSession) => {
-    setSession(newSession);
-    loadData();
   };
 
   const stats: FTADStats = useMemo(() => {
@@ -103,8 +94,9 @@ const App: React.FC = () => {
     };
   }, [data]);
 
+  // If no active session, render the Login component
   if (!session) {
-    return <Login onSuccess={handleLoginSuccess} />;
+    return <Login onSuccess={setSession} />;
   }
 
   return (
@@ -124,19 +116,18 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-6">
-            <div className="hidden lg:flex flex-col items-end mr-4">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Logged in as</span>
-              <span className="text-[12px] font-black text-slate-700 leading-tight flex items-center gap-2 uppercase">
-                <UserCircle size={14} className="text-indigo-600" />
-                {session.username} ({session.sdo || 'Regional'})
-              </span>
+            <div className="hidden md:flex flex-col items-end">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Operator Session</span>
+              <div className="flex items-center gap-2">
+                <UserIcon size={12} className="text-indigo-600" />
+                <span className="text-xs font-black text-slate-700 uppercase">{session.username}</span>
+              </div>
             </div>
-            <div className="h-8 w-px bg-slate-100 mx-2 hidden lg:block"></div>
             <div className="flex items-center gap-2">
               <button onClick={loadData} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all" title="Refresh Data">
                 <RefreshCw size={20} className={loading ? 'animate-spin text-indigo-600' : ''} />
               </button>
-              <button onClick={handleLogout} className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all" title="Logout">
+              <button onClick={handleLogout} className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all" title="End Session">
                 <LogOut size={20} />
               </button>
             </div>
@@ -155,13 +146,13 @@ const App: React.FC = () => {
         <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-10 mb-12">
           <div className="max-w-3xl">
             <div className="flex items-center gap-3 mb-4">
-              <span className="bg-indigo-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">NCR REGION</span>
+              <span className="bg-indigo-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{session.sdo || 'NCR REGION'}</span>
               <span className="text-slate-200">/</span>
               <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">TAP OVERSIGHT</span>
             </div>
             <h2 className="text-5xl font-black text-slate-900 tracking-tighter mb-4">TA Plan Progress</h2>
             <p className="text-lg text-slate-500 font-medium leading-relaxed">
-              Welcome back, <span className="text-indigo-600 font-black">{session.schoolName || session.username}</span>. Currently monitoring completion and finalization status of Technical Assistance Plans (TAP).
+              Monitoring completion and finalization status of Technical Assistance Plans (TAP) for {session.schoolName || 'the regional unit'}.
             </p>
           </div>
         </div>
@@ -210,7 +201,7 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <h4 className="text-2xl font-black text-slate-900 mb-2">Record Void</h4>
-                  <p className="text-slate-400 font-medium max-w-sm">No operational records found in the current synchronization cycle for NCR Region.</p>
+                  <p className="text-slate-400 font-medium max-w-sm">No operational records found in the current synchronization cycle for the selected unit.</p>
                 </>
               )}
             </div>

@@ -1,11 +1,9 @@
 
-import { UserSession } from "../types";
+import { Account, UserSession } from "../types";
 
 /**
- * The endpoint on Vercel that handles the database query.
+ * Hashes a string using SHA-256 for secure comparison.
  */
-const VERCEL_API_ENDPOINT = "/api/auth/login";
-
 export async function hashPassword(password: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(password);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -13,36 +11,22 @@ export async function hashPassword(password: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * Validates login against the real Vercel Postgres database via an API route.
- */
-export async function validateLogin(username: string, passwordPlain: string): Promise<UserSession | null> {
-  try {
-    const response = await fetch(VERCEL_API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password: passwordPlain }),
-    });
+export async function validateLogin(username: string, passwordPlain: string, accounts: Account[]): Promise<UserSession | null> {
+  const account = accounts.find(a => a.username.toLowerCase() === username.toLowerCase());
+  if (!account) return null;
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Auth API Error:", errorData.error);
-      return null;
-    }
-
-    const data = await response.json();
-    
-    // Return the session object provided by the backend
+  const enteredHash = await hashPassword(passwordPlain);
+  
+  // Direct comparison with spreadsheet hash
+  if (enteredHash === account.passwordHash.toLowerCase()) {
     return {
-      username: data.username,
-      sdo: data.sdo,
-      schoolName: data.schoolName,
-      email: data.email
+      username: account.username,
+      sdo: account.sdo,
+      schoolName: account.schoolName,
+      email: account.email
     };
-  } catch (error) {
-    console.error("Network error connecting to Vercel Database:", error);
-    return null;
   }
+  return null;
 }
 
 export function saveSession(session: UserSession) {
@@ -51,11 +35,7 @@ export function saveSession(session: UserSession) {
 
 export function getSession(): UserSession | null {
   const raw = localStorage.getItem('ftad_session');
-  try {
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    return null;
-  }
+  return raw ? JSON.parse(raw) : null;
 }
 
 export function clearSession() {

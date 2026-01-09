@@ -1,4 +1,21 @@
 
+// types.ts: Core interfaces for technical assistance monitoring and authentication
+
+export interface Account {
+  username: string;
+  passwordHash: string;
+  sdo: string;
+  schoolName: string;
+  email: string;
+}
+
+export interface UserSession {
+  username: string;
+  sdo: string;
+  schoolName: string;
+  email: string;
+}
+
 export interface MATATAGItem {
   status: string;
   issue: string;
@@ -74,20 +91,4 @@ export interface FTADStats {
   partialTAPs: number;
   unaccomplishedTAPs: number;
   pendingTAPs: number;
-}
-
-export interface Account {
-  username: string;
-  passwordHash: string;
-  email: string;
-  dateCreated: string;
-  sdo: string;
-  schoolName: string;
-}
-
-export interface UserSession {
-  username: string;
-  sdo: string;
-  schoolName: string;
-  email: string;
 }
