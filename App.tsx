@@ -1,3 +1,4 @@
+
 // App.tsx: Integrated session management and data scope filtering
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -55,14 +56,14 @@ const App: React.FC = () => {
     // STRICT Admin Access check
     // Only the 'admin' account or accounts explicitly labeled 'FTAD-REGIONAL' see everything.
     const isRegionalAdmin = 
-      ['admin', 'ftad_admin'].includes(username) || 
-      ['FTAD-REGIONAL'].includes(userSdo);
+      ['admin', 'ftad_admin', 'siracereyes'].includes(username) || 
+      ['FTAD-REGIONAL', 'REGIONAL'].includes(userSdo);
 
     if (isRegionalAdmin) {
       return data;
     }
 
-    // If SDO is empty, do not show any data (safety fallback)
+    // If SDO is missing, security block
     if (!userSdo) {
       return [];
     }
@@ -71,9 +72,13 @@ const App: React.FC = () => {
     return data.filter(record => {
       const office = (record.office || "").toUpperCase();
       const division = (record.divisionSchool || "").toUpperCase();
+      const district = (record.district || "").toUpperCase();
       
-      // We look for the exact division string within the office/school columns
-      return office.includes(userSdo) || division.includes(userSdo);
+      // We look for the user's SDO string inside any of the organizational columns
+      // This handles "Caloocan" matching "SDO Caloocan City"
+      return office.includes(userSdo) || 
+             division.includes(userSdo) || 
+             district.includes(userSdo);
     });
   }, [data, session]);
 
@@ -125,7 +130,6 @@ const App: React.FC = () => {
     };
   }, [filteredData]);
 
-  // If no active session, render the Login component
   if (!session) {
     return <Login onSuccess={setSession} />;
   }
@@ -246,8 +250,8 @@ const App: React.FC = () => {
                 <>
                   <h4 className="text-2xl font-black text-slate-900 mb-2">No Records Found</h4>
                   <p className="text-slate-400 font-medium max-w-sm">
-                    No registry entries match the current scope of <span className="font-bold text-slate-900">{session.sdo || 'Unknown'}</span>. 
-                    Please ensure the "Reporting Office" or "Division/School" columns in the spreadsheet contain <span className="text-indigo-600 font-bold">"{session.sdo}"</span>.
+                    No registry entries match <span className="font-bold text-slate-900">"{session.sdo || 'Unknown'}"</span>. 
+                    Ensure your Division name is spelled exactly as it appears in the Reporting Office column.
                   </p>
                 </>
               )}

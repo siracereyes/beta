@@ -1,3 +1,4 @@
+
 import { UserSession } from "../types";
 
 export async function hashPassword(password: string): Promise<string> {
@@ -23,47 +24,31 @@ export async function testApiConnection(): Promise<string> {
     });
     clearTimeout(id);
     const data = await res.json();
-    return `Status: ${data.status || 'Active'} | Node: ${data.node || 'Edge'}`;
+    return `DB Connectivity: ${data.status || 'Active'}`;
   } catch (err: any) {
     clearTimeout(id);
-    if (err.name === 'AbortError') return "Edge Link Timeout (8s)";
-    return `Edge Link Fault: ${err.message}`;
-  }
-}
-
-async function secureFetch(url: string, body: object, onStatus?: (s: string) => void): Promise<any> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 12000);
-
-  try {
-    onStatus?.("Checking Edge Registry...");
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    });
-    
-    clearTimeout(id);
-    
-    if (!response.ok) {
-      const text = await response.text();
-      let errorMsg = text;
-      try { errorMsg = JSON.parse(text).error; } catch { }
-      throw new Error(errorMsg || `Gateway Error ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (err: any) {
-    clearTimeout(id);
-    if (err.name === 'AbortError') throw new Error("Connection Timed Out (12s)");
-    throw err;
+    return `Cloud Fault: ${err.message}`;
   }
 }
 
 export async function validateLogin(username: string, passwordPlain: string, onStatus?: (s: string) => void): Promise<UserSession | null> {
-  const hashedPassword = await hashPassword(passwordPlain);
-  return await secureFetch('/api/auth/login', { username, passwordHash: hashedPassword }, onStatus);
+  const passwordHash = await hashPassword(passwordPlain);
+  onStatus?.("Authenticating with Cloud DB...");
+
+  const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, passwordHash })
+  });
+  
+  const data = await response.json();
+  
+  if (response.ok) {
+    onStatus?.("Registry Verified.");
+    return data;
+  }
+
+  throw new Error(data.error || "Authentication failed.");
 }
 
 export async function registerUser(data: { 
@@ -73,14 +58,35 @@ export async function registerUser(data: {
   sdo: string; 
   schoolName: string 
 }, onStatus?: (s: string) => void): Promise<UserSession | null> {
-  const hashedPassword = await hashPassword(data.passwordPlain);
-  return await secureFetch('/api/auth/signup', {
-    username: data.username,
-    passwordHash: hashedPassword,
-    email: data.email,
-    sdo: data.sdo,
-    schoolName: data.schoolName
-  }, onStatus);
+  const passwordHash = await hashPassword(data.passwordPlain);
+  
+  onStatus?.("Writing to Cloud Registry...");
+  
+  const response = await fetch('/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: data.username,
+      passwordHash: passwordHash,
+      email: data.email,
+      sdo: data.sdo,
+      schoolName: data.schoolName
+    })
+  });
+
+  const result = await response.json();
+
+  if (response.ok) {
+    onStatus?.("Cloud Entry Confirmed.");
+    return {
+      username: result.username,
+      sdo: result.sdo,
+      schoolName: result.schoolName,
+      email: result.email
+    };
+  }
+
+  throw new Error(result.error || "Enrollment failed.");
 }
 
 export function saveSession(session: UserSession) {
