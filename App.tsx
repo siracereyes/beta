@@ -1,5 +1,5 @@
 
-// App.tsx: Integrated session management and Login gateway
+// App.tsx: Integrated session management and data scope filtering
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchFTADData } from './services/dataService';
@@ -10,7 +10,7 @@ import Login from './components/Login';
 import { getSession, clearSession } from './services/authService';
 import { 
   RefreshCw, Database, 
-  Target, Info, CheckCircle2, AlertCircle, XCircle, Timer, LogOut, User as UserIcon
+  Target, Info, CheckCircle2, AlertCircle, XCircle, Timer, LogOut, User as UserIcon, ShieldCheck
 } from 'lucide-react';
 
 const LOGO_URL = "https://depedcaloocan.com/wp-content/uploads/2025/07/webtap.png";
@@ -46,6 +46,31 @@ const App: React.FC = () => {
     setSession(null);
   };
 
+  // Determine the filtered data set based on the user's SDO
+  const filteredData = useMemo(() => {
+    if (!session || data.length === 0) return [];
+
+    const userSdo = (session.sdo || "").toUpperCase().trim();
+    const username = (session.username || "").toLowerCase();
+
+    // Regional/Global Admin Access check
+    const isRegionalAdmin = 
+      ['admin', 'ftad_admin'].includes(username) || 
+      ['FTAD-REGIONAL', 'NCR-REGIONAL', 'REGIONAL', 'FTAD'].includes(userSdo);
+
+    if (isRegionalAdmin) {
+      return data;
+    }
+
+    // Filter data where the Reporting Office contains the user's SDO name
+    return data.filter(record => {
+      const office = (record.office || "").toUpperCase();
+      const division = (record.divisionSchool || "").toUpperCase();
+      
+      return office.includes(userSdo) || division.includes(userSdo);
+    });
+  }, [data, session]);
+
   const stats: FTADStats = useMemo(() => {
     const defaultStats: FTADStats = { 
       totalInterventions: 0, 
@@ -57,9 +82,9 @@ const App: React.FC = () => {
       pendingTAPs: 0
     };
 
-    if (data.length === 0) return defaultStats;
+    if (filteredData.length === 0) return defaultStats;
     
-    const allTargets = data.flatMap(d => d.targets);
+    const allTargets = filteredData.flatMap(d => d.targets);
     const totalTARequests = allTargets.filter(t => t.objective).length;
     
     let accomplished = 0;
@@ -84,7 +109,7 @@ const App: React.FC = () => {
     const resolutionRate = totalTARequests > 0 ? (accomplished / totalTARequests) * 100 : 0;
     
     return {
-      totalInterventions: data.length,
+      totalInterventions: filteredData.length,
       resolutionRate,
       totalTARequests,
       accomplishedTAPs: accomplished,
@@ -92,15 +117,17 @@ const App: React.FC = () => {
       unaccomplishedTAPs: unaccomplished,
       pendingTAPs: pending
     };
-  }, [data]);
+  }, [filteredData]);
 
   // If no active session, render the Login component
   if (!session) {
     return <Login onSuccess={setSession} />;
   }
 
+  const isFullView = filteredData.length === data.length && data.length > 0;
+
   return (
-    <div className="min-h-screen bg-[#FDFDFF] pb-20">
+    <div className="min-h-screen bg-[#FDFDFF] pb-20 font-sans">
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-2xl border-b border-slate-100 px-10 py-4">
         <div className="max-w-[1600px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -109,15 +136,24 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-black text-slate-900 tracking-tighter leading-none uppercase">FTAD Dashboard</h1>
-              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mt-1 block">
-                Regional Technical Assistance Monitoring
-              </span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">
+                  Technical Assistance Monitoring
+                </span>
+                <span className="text-slate-200">|</span>
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${isFullView ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'}`}>
+                  <ShieldCheck size={10} />
+                  <span className="text-[8px] font-black uppercase tracking-tighter">
+                    {isFullView ? 'REGIONAL ACCESS' : 'DIVISION FILTERED'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
           
           <div className="flex items-center gap-6">
             <div className="hidden md:flex flex-col items-end">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Operator Session</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Node</span>
               <div className="flex items-center gap-2">
                 <UserIcon size={12} className="text-indigo-600" />
                 <span className="text-xs font-black text-slate-700 uppercase">{session.username}</span>
@@ -146,13 +182,15 @@ const App: React.FC = () => {
         <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-10 mb-12">
           <div className="max-w-3xl">
             <div className="flex items-center gap-3 mb-4">
-              <span className="bg-indigo-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{session.sdo || 'NCR REGION'}</span>
+              <span className="bg-slate-900 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                {session.sdo || 'NCR REGION'}
+              </span>
               <span className="text-slate-200">/</span>
               <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">TAP OVERSIGHT</span>
             </div>
             <h2 className="text-5xl font-black text-slate-900 tracking-tighter mb-4">TA Plan Progress</h2>
             <p className="text-lg text-slate-500 font-medium leading-relaxed">
-              Monitoring completion and finalization status of Technical Assistance Plans (TAP) for {session.schoolName || 'the regional unit'}.
+              Monitoring {isFullView ? 'all regional' : 'division-specific'} Technical Assistance Plans (TAP) for <span className="text-indigo-600 font-black">{session.sdo}</span>.
             </p>
           </div>
         </div>
@@ -186,8 +224,8 @@ const App: React.FC = () => {
         </div>
 
         <div className="mb-20">
-          {data.length > 0 ? (
-            <DataTable records={data} />
+          {filteredData.length > 0 ? (
+            <DataTable records={filteredData} />
           ) : (
             <div className="bg-white p-32 rounded-[3rem] border border-slate-100 flex flex-col items-center justify-center text-center">
               <div className="w-24 h-24 bg-slate-50 text-slate-200 rounded-full flex items-center justify-center mb-8">
@@ -200,8 +238,11 @@ const App: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <h4 className="text-2xl font-black text-slate-900 mb-2">Record Void</h4>
-                  <p className="text-slate-400 font-medium max-w-sm">No operational records found in the current synchronization cycle for the selected unit.</p>
+                  <h4 className="text-2xl font-black text-slate-900 mb-2">No Records Found</h4>
+                  <p className="text-slate-400 font-medium max-w-sm">
+                    No registry entries match the current scope of <span className="font-bold text-slate-900">{session.sdo}</span>. 
+                    Please ensure the Reporting Office names match your division profile.
+                  </p>
                 </>
               )}
             </div>
