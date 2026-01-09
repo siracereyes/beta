@@ -13,6 +13,7 @@ export async function hashPassword(password: string): Promise<string> {
 
 /**
  * Validates login via serverless API route.
+ * Communicates with Vercel Postgres.
  */
 export async function validateLogin(username: string, passwordPlain: string): Promise<UserSession | null> {
   try {
@@ -30,6 +31,8 @@ export async function validateLogin(username: string, passwordPlain: string): Pr
     });
 
     if (!response.ok) {
+      const errorData = await response.json();
+      console.warn("Auth Failed:", errorData.error);
       return null;
     }
 
