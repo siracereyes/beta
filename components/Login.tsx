@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { User, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
-import { fetchAccounts } from '../services/dataService';
 import { validateLogin, saveSession } from '../services/authService';
 import { UserSession } from '../types';
 
@@ -23,8 +22,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
     setError(null);
 
     try {
-      const accounts = await fetchAccounts();
-      const session = await validateLogin(username, password, accounts);
+      const session = await validateLogin(username, password);
 
       if (session) {
         saveSession(session);
@@ -33,7 +31,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
         setError("Invalid credentials. Please verify your SDO access keys.");
       }
     } catch (err) {
-      setError("Synchronisation Error: Unable to reach accounts registry.");
+      setError("Synchronisation Error: Unable to reach the authentication service.");
     } finally {
       setIsAuthenticating(false);
     }
@@ -54,7 +52,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
               <img src={LOGO_URL} alt="FTAD Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-3xl font-black text-white tracking-tighter mb-2">FTAD GATEWAY</h1>
-            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Precision Analytics Auth v2.0</p>
+            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Cloud Database Auth v3.0</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
@@ -67,7 +65,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-white text-sm font-bold focus:outline-none focus:ring-4 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all"
-                  placeholder="e.g. sdo_marikina_admin"
+                  placeholder="e.g. sdo_admin"
                   required
                 />
               </div>
@@ -103,11 +101,11 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
               {isAuthenticating ? (
                 <>
                   <Loader2 className="animate-spin" size={20} />
-                  VALIDATING...
+                  QUERYING DB...
                 </>
               ) : (
                 <>
-                  AUTHORIZE ENTRY
+                  SECURE ACCESS
                   <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                 </>
               )}
@@ -115,7 +113,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
           </form>
 
           <p className="mt-12 text-center text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
-            Authorized Personnel Only.<br/>All access is logged and encrypted.
+            Vercel Postgres Protected.<br/>Regional Technical Assistance Database.
           </p>
         </div>
       </div>

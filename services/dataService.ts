@@ -1,11 +1,9 @@
 
-// dataService.ts: Service for fetching TAP records and account registry
+// dataService.ts: Service for fetching TAP records
 
-import { TARecord, MATATAGItem, TATarget, TAAgreement, Signatory, Account } from "../types";
+import { TARecord, MATATAGItem, TATarget, TAAgreement, Signatory } from "../types";
 
 const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGRxkahPOc_CiaRX6ZjXNPsREBUxUsJnhDwtTo8Z55gys2UikNMq4KPCmccnjUPyP_yj0d1AQzepFI/pub?output=csv";
-// Assuming accounts are in the same workbook on a specific published sheet
-const ACCOUNTS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRGRxkahPOc_CiaRX6ZjXNPsREBUxUsJnhDwtTo8Z55gys2UikNMq4KPCmccnjUPyP_yj0d1AQzepFI/pub?gid=2048658604&single=true&output=csv";
 
 function parseCSVLine(line: string): string[] {
   const result: string[] = [];
@@ -203,37 +201,6 @@ export const fetchFTADData = async (): Promise<TARecord[]> => {
     return records;
   } catch (error) {
     console.error("Fetch FTAD Data Error:", error);
-    return [];
-  }
-};
-
-/**
- * Fetches user accounts for authorization validation.
- */
-export const fetchAccounts = async (): Promise<Account[]> => {
-  try {
-    const rows = await getRows(ACCOUNTS_URL);
-    if (rows.length < 2) return [];
-
-    const headers = parseCSVLine(rows[0]).map(h => h.trim().toUpperCase());
-    const findIdx = (name: string) => headers.indexOf(name.toUpperCase());
-
-    const accounts: Account[] = [];
-    for (let i = 1; i < rows.length; i++) {
-      const v = parseCSVLine(rows[i]);
-      if (v.length < 2) continue;
-      
-      accounts.push({
-        username: v[findIdx("USERNAME")] || "",
-        passwordHash: (v[findIdx("PASSWORD_HASH")] || v[findIdx("PASSWORD")] || "").toLowerCase(),
-        sdo: v[findIdx("SDO")] || "",
-        schoolName: v[findIdx("SCHOOL_NAME")] || "",
-        email: v[findIdx("EMAIL")] || ""
-      });
-    }
-    return accounts;
-  } catch (error) {
-    console.error("Fetch Accounts Error:", error);
     return [];
   }
 };
