@@ -19,18 +19,18 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
   
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [statusLog, setStatusLog] = useState<string>('System Idle');
+  const [statusLog, setStatusLog] = useState<string>('Edge Engine Idle');
   const [isTesting, setIsTesting] = useState(false);
 
   const runConnectionTest = async () => {
     if (isTesting) return;
     setIsTesting(true);
-    setStatusLog('Requesting handshake (10s limit)...');
+    setStatusLog('Polling Edge Config...');
     try {
       const result = await testApiConnection();
       setStatusLog(result);
     } catch (e: any) {
-      setStatusLog(`Local Crash: ${e.message}`);
+      setStatusLog(`Local Fault: ${e.message}`);
     } finally {
       setIsTesting(false);
     }
@@ -42,7 +42,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
     
     setIsAuthenticating(true);
     setError(null);
-    setStatusLog('Negotiating SSL...');
+    setStatusLog('Resolving Edge Data...');
 
     try {
       let session: UserSession | null = null;
@@ -55,21 +55,20 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       }
 
       if (session) {
-        setStatusLog('Connection Secure.');
+        setStatusLog('Session Authenticated.');
         saveSession(session);
         onSuccess(session);
       }
     } catch (err: any) {
-      setError(err.message || "Network Failure.");
-      setStatusLog('Fault detected.');
+      setError(err.message || "Auth Failure.");
+      setStatusLog('Gateway Fault.');
     } finally {
       setIsAuthenticating(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#020617] relative overflow-hidden p-6">
-      {/* Background Orbs */}
+    <div className="min-h-screen flex items-center justify-center bg-[#020617] relative overflow-hidden p-6 font-sans">
       <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-indigo-900 rounded-full blur-[180px]"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-900 rounded-full blur-[180px]"></div>
@@ -82,11 +81,11 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
             <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-xl p-2 border border-white/20">
               <img src={LOGO_URL} alt="FTAD Logo" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-xl font-black text-white tracking-tighter uppercase">
+            <h1 className="text-xl font-black text-white tracking-tighter uppercase text-center leading-none">
               FTAD MONITORING
             </h1>
-            <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.5em] mt-1">
-              Neon Cloud v5.0
+            <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.5em] mt-2">
+              Vercel Edge Config v6.0
             </p>
           </div>
 
@@ -127,17 +126,16 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
               disabled={isAuthenticating}
               className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl py-4 font-black flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              {isAuthenticating ? <Loader2 className="animate-spin" size={18} /> : 'AUTHORIZE'}
+              {isAuthenticating ? <Loader2 className="animate-spin" size={18} /> : 'CONNECT'}
               <ArrowRight size={18} />
             </button>
           </form>
 
-          {/* Diagnostic Telemetry Console */}
           <div className="mt-8 bg-black/60 rounded-3xl p-5 border border-white/5 font-mono shadow-inner">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Terminal size={12} className="text-indigo-500" />
-                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Network Telemetry</span>
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Edge Telemetry</span>
               </div>
               {!isAuthenticating && (
                 <button 
@@ -146,12 +144,12 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
                   className="text-[8px] font-black text-indigo-400 hover:text-white uppercase flex items-center gap-1 transition-colors"
                 >
                   <Globe size={10} className={isTesting ? 'animate-spin' : ''} />
-                  {isTesting ? 'SYNCING' : '[SYNC]'}
+                  {isTesting ? 'SYNCING' : '[TEST]'}
                 </button>
               )}
             </div>
             <p className="text-[10px] text-indigo-200 font-bold tracking-tight">
-              <span className="text-slate-700 mr-2">root@node:~$</span>
+              <span className="text-slate-700 mr-2">node@edge:~$</span>
               {statusLog}
             </p>
           </div>
@@ -162,11 +160,11 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
               onClick={() => {
                 setMode(mode === 'login' ? 'signup' : 'login');
                 setError(null);
-                setStatusLog('UI State Modified.');
+                setStatusLog('UI Redirected.');
               }}
               className="text-[9px] font-black text-slate-500 hover:text-indigo-400 uppercase tracking-[0.2em] transition-colors"
             >
-              {mode === 'login' ? 'Register New Account' : 'Back to Login'}
+              {mode === 'login' ? 'Registry Enrollment' : 'Back to Portal'}
             </button>
           </div>
         </div>

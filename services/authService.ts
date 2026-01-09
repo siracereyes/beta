@@ -1,13 +1,8 @@
 import { UserSession } from "../types";
 
-/**
- * Hashes a string using SHA-256 for secure transmission.
- */
 export async function hashPassword(password: string): Promise<string> {
   if (!window.crypto || !window.crypto.subtle) {
-    // Fallback for extremely old/insecure browsers if necessary, 
-    // but modern DepEd systems should support SubtleCrypto.
-    throw new Error("Security Error: SubtleCrypto not supported or insecure context.");
+    throw new Error("Security Error: Insecure context or missing Crypto API.");
   }
   const msgBuffer = new TextEncoder().encode(password);
   const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -15,13 +10,9 @@ export async function hashPassword(password: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * Simplified Telemetry Test (No external dependencies)
- */
 export async function testApiConnection(): Promise<string> {
-  const timeoutMs = 10000; // Increased to 10s for slow proxies
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
+  const id = setTimeout(() => controller.abort(), 8000);
 
   try {
     const res = await fetch('/api/auth/login', { 
@@ -31,21 +22,20 @@ export async function testApiConnection(): Promise<string> {
       signal: controller.signal
     });
     clearTimeout(id);
-    return `Server Active: HTTP ${res.status}`;
+    const data = await res.json();
+    return `Status: ${data.status} | Region: ${data.node}`;
   } catch (err: any) {
     clearTimeout(id);
-    if (err.name === 'AbortError') return "FAILED: Gateway Timeout (10s)";
-    return `FAILED: ${err.message || "Connection Interrupted"}`;
+    return `Edge Link Failed: ${err.message}`;
   }
 }
 
 async function secureFetch(url: string, body: object, onStatus?: (s: string) => void): Promise<any> {
-  const timeoutMs = 15000;
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
+  const id = setTimeout(() => controller.abort(), 12000);
 
   try {
-    onStatus?.("Authenticating...");
+    onStatus?.("Checking Edge Node...");
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -59,13 +49,12 @@ async function secureFetch(url: string, body: object, onStatus?: (s: string) => 
       const text = await response.text();
       let errorMsg = text;
       try { errorMsg = JSON.parse(text).error; } catch { }
-      throw new Error(errorMsg || `Error ${response.status}`);
+      throw new Error(errorMsg || `HTTP ${response.status}`);
     }
     
     return await response.json();
   } catch (err: any) {
     clearTimeout(id);
-    if (err.name === 'AbortError') throw new Error("Request Timed Out (15s)");
     throw err;
   }
 }

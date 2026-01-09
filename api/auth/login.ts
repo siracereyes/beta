@@ -1,12 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { get } from '@vercel/edge-config';
 
-const NEON_API_URL = "https://ep-red-lab-ah8ymwoj.apirest.c-3.us-east-1.aws.neon.tech/neondb/rest/v1";
-
+/**
+ * Vercel Edge Config Login Handler
+ * Requires EDGE_CONFIG environment variable to be set in Vercel Dashboard.
+ */
 export default async function handler(
   request: VercelRequest,
   response: VercelResponse,
 ) {
-  // Allow health checks to respond immediately
   if (request.method === 'OPTIONS') return response.status(200).end();
   
   if (request.method !== 'POST') {
@@ -15,12 +17,11 @@ export default async function handler(
 
   const { username, passwordHash, ping } = request.body;
 
-  // Instant response for diagnostic pings
   if (ping) {
     return response.status(200).json({ 
-      status: 'online', 
-      timestamp: new Date().toISOString(),
-      service: 'Neon Gateway'
+      status: 'Edge Connected', 
+      latency: 'Ultra-Low',
+      node: process.env.VERCEL_REGION || 'global'
     });
   }
 
@@ -29,7 +30,7 @@ export default async function handler(
   }
 
   try {
-    // Prototype Access: Allow 'admin' to bypass DB for testing
+    // Prototype: Admin bypass
     if (username === 'admin' && passwordHash) {
        return response.status(200).json({
           username: 'admin',
@@ -39,29 +40,25 @@ export default async function handler(
        });
     }
 
-    // Direct Neon Check (Note: Requires environment secret NEON_API_KEY to be set in Vercel)
-    const neonResponse = await fetch(`${NEON_API_URL}/sql`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEON_API_KEY || ''}`
-      },
-      body: JSON.stringify({ 
-        query: "SELECT username, email, sdo, school_name FROM accounts WHERE username = $1 AND password_hash = $2",
-        params: [username, passwordHash]
-      })
-    }).catch(() => null);
-
-    if (neonResponse && neonResponse.ok) {
-      const data = await neonResponse.json();
-      if (data.rows && data.rows.length > 0) {
-        return response.status(200).json(data.rows[0]);
+    // Read users from Edge Config
+    // Expected structure in Edge Config: { "users": { "username": { "passwordHash": "...", ... } } }
+    const users: any = await get('users');
+    
+    if (users && users[username]) {
+      const user = users[username];
+      if (user.passwordHash === passwordHash) {
+        return response.status(200).json({
+          username: username,
+          email: user.email,
+          sdo: user.sdo,
+          schoolName: user.schoolName
+        });
       }
     }
 
-    return response.status(401).json({ error: 'Invalid credentials or Neon Link Offline' });
+    return response.status(401).json({ error: 'Invalid credentials or User not in Edge Registry' });
 
   } catch (error: any) {
-    return response.status(500).json({ error: `Internal Gateway Error: ${error.message}` });
+    return response.status(500).json({ error: `Edge Logic Error: ${error.message}` });
   }
 }
