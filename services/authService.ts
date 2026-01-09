@@ -89,6 +89,42 @@ export async function registerUser(data: {
   throw new Error(result.error || "Enrollment failed.");
 }
 
+export async function updateAccount(data: {
+  username: string;
+  sdo: string;
+  schoolName: string;
+  passwordPlain?: string;
+}): Promise<UserSession> {
+  const payload: any = {
+    username: data.username,
+    sdo: data.sdo,
+    schoolName: data.schoolName
+  };
+
+  if (data.passwordPlain) {
+    payload.passwordHash = await hashPassword(data.passwordPlain);
+  }
+
+  const response = await fetch('/api/auth/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const result = await response.json();
+
+  if (response.ok) {
+    return {
+      username: result.username,
+      sdo: result.sdo,
+      schoolName: result.schoolName,
+      email: result.email || ''
+    };
+  }
+
+  throw new Error(result.error || "Update failed.");
+}
+
 export function saveSession(session: UserSession) {
   localStorage.setItem('ftad_session', JSON.stringify(session));
 }

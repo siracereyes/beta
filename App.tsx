@@ -7,10 +7,11 @@ import { TARecord, FTADStats, UserSession } from './types';
 import StatCard from './components/StatCard';
 import DataTable from './components/DataTable';
 import Login from './components/Login';
+import AccountSettings from './components/AccountSettings';
 import { getSession, clearSession } from './services/authService';
 import { 
   RefreshCw, Database, 
-  Target, Info, CheckCircle2, AlertCircle, XCircle, Timer, LogOut, User as UserIcon, ShieldCheck
+  Target, Info, CheckCircle2, AlertCircle, XCircle, Timer, LogOut, User as UserIcon, ShieldCheck, Settings as SettingsIcon
 } from 'lucide-react';
 
 const LOGO_URL = "https://depedcaloocan.com/wp-content/uploads/2025/07/webtap.png";
@@ -20,6 +21,7 @@ const App: React.FC = () => {
   const [data, setData] = useState<TARecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -170,6 +172,13 @@ const App: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsSettingsOpen(true)} 
+                className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all" 
+                title="Account Settings"
+              >
+                <SettingsIcon size={20} />
+              </button>
               <button onClick={loadData} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all" title="Refresh Data">
                 <RefreshCw size={20} className={loading ? 'animate-spin text-indigo-600' : ''} />
               </button>
@@ -180,6 +189,14 @@ const App: React.FC = () => {
           </div>
         </div>
       </nav>
+
+      {isSettingsOpen && (
+        <AccountSettings 
+          session={session} 
+          onClose={() => setIsSettingsOpen(false)} 
+          onUpdate={setSession} 
+        />
+      )}
 
       <main className="max-w-[1600px] mx-auto px-10 mt-12">
         {error && (
