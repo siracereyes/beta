@@ -3,10 +3,9 @@ import React, { useState, useMemo } from 'react';
 import { TARecord } from '../types';
 import { 
   Search, ChevronRight, Activity, Target, AlertCircle, 
-  Calendar, Users, FileCheck, Info, MapPin, CheckCircle2, Shield,
-  Filter, Map, Building2, ClipboardList, Clock, Briefcase, CloudUpload, Loader2
+  Calendar, Info, MapPin, CheckCircle2,
+  Map, Building2, Clock, Briefcase, CloudUpload, Loader2
 } from 'lucide-react';
-// Corrected import: updateTAPStatus is exported from dataService
 import { updateTAPStatus } from '../services/dataService';
 import { getSession } from '../services/authService';
 
@@ -14,7 +13,7 @@ interface DataTableProps {
   records: TARecord[];
 }
 
-const getStatusColor = (status: string) => {
+const getStatusColor = (status?: string) => {
   if (!status) return 'bg-slate-100 text-slate-400';
   const s = status.toLowerCase();
   if (s.includes('accomplished') || s.includes('met') || s.includes('complete') || s.includes('done') || s.includes('yes')) return 'bg-emerald-100 text-emerald-700';
@@ -29,9 +28,8 @@ const DataTable: React.FC<DataTableProps> = ({ records }) => {
   const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
   const [selectedOffice, setSelectedOffice] = useState<string>('all');
   const [selectedRow, setSelectedRow] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'targets' | 'matatag' | 'signatories' | 'misc'>('targets');
+  const [activeTab, setActiveTab] = useState<'targets' | 'matatag' | 'misc'>('targets');
   
-  // Local state for editing statuses before sync
   const [syncing, setSyncing] = useState<string | null>(null);
   const session = getSession();
 
@@ -67,10 +65,11 @@ const DataTable: React.FC<DataTableProps> = ({ records }) => {
         status: newStatus,
         username: session?.username || 'anonymous'
       });
-      // Update local record copy temporarily
+      // Locally update to reflect change immediately
       record.targets[targetIdx].tapStatus = newStatus;
     } catch (err: any) {
-      alert(err.message);
+      console.error(err);
+      alert("Cloud Sync Failed: " + (err.message || "Unknown error"));
     } finally {
       setSyncing(null);
     }
@@ -87,7 +86,7 @@ const DataTable: React.FC<DataTableProps> = ({ records }) => {
                 {filteredRecords.length} MATCHES
               </span>
             </h3>
-            <p className="text-[11px] text-slate-400 mt-2 font-bold uppercase tracking-[0.15em] italic">Technical Assistance Oversight v5.0</p>
+            <p className="text-[11px] text-slate-400 mt-2 font-bold uppercase tracking-[0.15em] italic">Technical Assistance Oversight v5.1</p>
           </div>
           
           <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
@@ -237,7 +236,7 @@ const DataTable: React.FC<DataTableProps> = ({ records }) => {
                                 <div>
                                   <h4 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">
                                     <Target className="text-indigo-400" />
-                                    Support Objectives registry
+                                    Support Objectives Registry
                                   </h4>
                                   <p className="text-slate-400 text-xs mt-2 uppercase font-bold tracking-wider italic">Updates to 'TAP Status Completion' will synchronize with the Cloud DB.</p>
                                 </div>
@@ -287,7 +286,7 @@ const DataTable: React.FC<DataTableProps> = ({ records }) => {
                                                     </div>
                                                   </div>
                                                   <div>
-                                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Status</label>
+                                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Sheet Status</label>
                                                     <span className={`inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase ${getStatusColor(target.status)}`}>
                                                       {target.status || 'Pending'}
                                                     </span>
@@ -333,18 +332,18 @@ const DataTable: React.FC<DataTableProps> = ({ records }) => {
                                                       <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2">TAP Status Completion</label>
                                                       <div className="relative">
                                                         <select 
-                                                          value={target.tapStatus}
+                                                          value={target.tapStatus || ''}
                                                           onChange={(e) => handleStatusUpdate(record, idx, e.target.value)}
                                                           disabled={isSyncing}
                                                           className={`w-full appearance-none px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all cursor-pointer focus:ring-2 focus:ring-indigo-500/20 outline-none ${getStatusColor(target.tapStatus)}`}
                                                         >
-                                                          <option value="">Select Status</option>
+                                                          <option value="">Pending Choice</option>
                                                           <option value="Accomplished">Accomplished</option>
                                                           <option value="Partial">Partial</option>
                                                           <option value="Unaccomplished">Unaccomplished</option>
                                                         </select>
-                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                                                          <CloudUpload size={14} />
+                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 text-indigo-400">
+                                                          {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <CloudUpload size={14} />}
                                                         </div>
                                                       </div>
                                                     </div>
