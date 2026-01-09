@@ -23,10 +23,11 @@ export async function testApiConnection(): Promise<string> {
     });
     clearTimeout(id);
     const data = await res.json();
-    return `Status: ${data.status} | Region: ${data.node}`;
+    return `Status: ${data.status || 'Active'} | Node: ${data.node || 'Edge'}`;
   } catch (err: any) {
     clearTimeout(id);
-    return `Edge Link Failed: ${err.message}`;
+    if (err.name === 'AbortError') return "Edge Link Timeout (8s)";
+    return `Edge Link Fault: ${err.message}`;
   }
 }
 
@@ -35,7 +36,7 @@ async function secureFetch(url: string, body: object, onStatus?: (s: string) => 
   const id = setTimeout(() => controller.abort(), 12000);
 
   try {
-    onStatus?.("Checking Edge Node...");
+    onStatus?.("Checking Edge Registry...");
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -49,12 +50,13 @@ async function secureFetch(url: string, body: object, onStatus?: (s: string) => 
       const text = await response.text();
       let errorMsg = text;
       try { errorMsg = JSON.parse(text).error; } catch { }
-      throw new Error(errorMsg || `HTTP ${response.status}`);
+      throw new Error(errorMsg || `Gateway Error ${response.status}`);
     }
     
     return await response.json();
   } catch (err: any) {
     clearTimeout(id);
+    if (err.name === 'AbortError') throw new Error("Connection Timed Out (12s)");
     throw err;
   }
 }
